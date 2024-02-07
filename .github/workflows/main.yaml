@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-    build:
+    build-test:
         runs-on: ubuntu-latest
 
         steps:
@@ -19,12 +19,5 @@ jobs:
             - name: Run Tests
               run: npm test
             
-            - name: Capture Test Output
-              run: tee test_output.txt
-              continue-on-error: true
-
-            - name: Display Test Output
-              if: always()
-              run: cat test_output.txt
 
         
