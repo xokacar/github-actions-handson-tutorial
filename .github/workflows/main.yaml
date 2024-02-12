@@ -1,23 +1,55 @@
-name: Main Action
+name: Main Action # GitHub Actions ismi
 
 on:
   push:
     branches:
-      - main
+      - main # Main branch'ine commit geldiği zaman çalış
+    tags:
+      - test* # 'test' ile başlayan etiketlerde çalış
+      - production* # 'production' ile başlayan etiketlerde çalış
 
 jobs:
-    build-test:
-        runs-on: ubuntu-latest
+  build-test:
+    runs-on: ubuntu-latest # Bu job bir Ubuntu ortamında çalıştır
 
-        steps:
-            - name: Checkout (git clone) Repository
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout (git clone) Repository # Kodu klonla
+        uses: actions/checkout@v4 # GitHub Marketplaceden  checkout eylemini kullan
 
-            - name: Install dependencies
-              run: npm ci
+      - name: Install dependencies # npm install= npm ci
+        run: npm ci # npm install ( Dependencileri yükleme)
 
-            - name: Run Tests
-              run: npm test
-            
+      - name: Build # Build işlemi
+        run: npm run build # npm run build komutunu kullanarak projeyi derle
 
-        
+      - name: Run Tests # Testleri çalıştır
+        run: npm test # npm test komutunu kullanarak testleri çalıştır
+
+      - name: Create Docker Image # Docker image'ı oluştur
+        run: docker build -t github-actions-tutorial . # github-actions-tutorial olarak etiketlenmiş Docker imajını oluştur
+
+      - name: Login to ACR # Azure Container Registry'e giriş yap
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push Docker image to ACR # Docker imajını ACR'a oluştur ve yükle
+        id: build
+        env:
+          IS_BUGFIX: ${{ contains(github.event.head_commit.message,'bugfix') }} # 'bugfix' anahtar kelimesi içeren commit varsa
+          IS_HOTFIX: ${{ contains(github.event.head_commit.message,'hotfix') }} # 'hotfix' anahtar kelimesi içeren commit varsa
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/test* ]] || [[ "$IS_BUGFIX" == "true" ]]; then
+               docker pull ${{ secrets.REGISTRY_LOGIN_SERVER }}/github-act-tutorial:latest
+               docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/github-act-tutorial:latest ${{ secrets.REGISTRY_LOGIN_SERVER }}/github-act-tutorial:qa
+               docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/github-act-tutorial:qa
+          elif [[ "$GITHUB_REF" == refs/tags/production* ]] || [[ "$IS_HOTFIX" == "true" ]]; then
+               docker pull ${{ secrets.REGISTRY_LOGIN_SERVER }}/github-act-tutorial:qa
+               docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/github-act-tutorial:qa ${{ secrets.REGISTRY_LOGIN_SERVER }}/github-act-tutorial:production
+               docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/github-act-tutorial:production
+          else
+               docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/github-act-tutorial:latest . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/github-act-tutorial:${{github.sha}}
+          fi
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/github-act-tutorial --all-tags # Tüm etiketleri ACR'a yükle
