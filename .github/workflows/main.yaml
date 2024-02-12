@@ -19,14 +19,8 @@ jobs:
       - name: Install dependencies # npm install= npm ci
         run: npm ci # npm install ( Dependencileri yükleme)
 
-      - name: Build # Build işlemi
-        run: npm run build # npm run build komutunu kullanarak projeyi derle
-
       - name: Run Tests # Testleri çalıştır
         run: npm test # npm test komutunu kullanarak testleri çalıştır
-
-      - name: Create Docker Image # Docker image'ı oluştur
-        run: docker build -t github-actions-tutorial . # github-actions-tutorial olarak etiketlenmiş Docker imajını oluştur
 
       - name: Login to ACR # Azure Container Registry'e giriş yap
         uses: azure/docker-login@v1
