@@ -17,10 +17,17 @@ jobs:
         uses: actions/checkout@v4 # GitHub Marketplaceden  checkout eylemini kullan
 
       - name: Install dependencies # npm install= npm ci
+        id: install_deps
         run: npm ci # npm install ( Dependencileri yükleme)
 
       - name: Run Tests # Testleri çalıştır
+        id: test_step
+        if: steps.install_deps.outcome=='success'
         run: npm test # npm test komutunu kullanarak testleri çalıştır
+
+      - name: Check Test status # Test durumunu kontrol et
+        if: steps.test_step.outcome=='failure'
+        run: exit 1 # Testler başarısız olduğunda işlemi sonlandır
 
       - name: Login to ACR # Azure Container Registry'e giriş yap
         uses: azure/docker-login@v1
@@ -46,4 +53,5 @@ jobs:
           else
                docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/github-act-tutorial:latest . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/github-act-tutorial:${{github.sha}}
           fi
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/github-act-tutorial --all-tags # Tüm etiketleri ACR'a yükle
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/github-act-tutorial --all-tags
+        # Tüm taglari ACR'a yükle
